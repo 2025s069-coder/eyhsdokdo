@@ -1,0 +1,6 @@
+{
+  "name": "독도 주권 교육 종합 플랫폼",
+  "description": "지리적 특성, 역사적 사료 및 한일 갈등의 평화적 해결 방안을 한눈에 배우고 토론하는 중·고등용 역사 및 지리 융합 교육 플랫폼",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
