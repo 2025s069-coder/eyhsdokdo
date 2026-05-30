@@ -62,6 +62,12 @@ export default function App() {
     }
   });
 
+  // Auto-Reflection Generator states
+  const [keywordsInput, setKeywordsInput] = useState("");
+  const [generatedTitle, setGeneratedTitle] = useState("");
+  const [generatedContent, setGeneratedContent] = useState("");
+  const [isGeneratingReflection, setIsGeneratingReflection] = useState(false);
+
   // Persistence triggers
   useEffect(() => {
     localStorage.setItem("dokdo_student_name", studentName);
@@ -153,6 +159,40 @@ export default function App() {
       setEvalError("AI 융합 검토 서비스를 로드하는 데 실패했습니다. 잠시 후 서버를 자동 복구합니다.");
     } finally {
       setIsEvaluating(false);
+    }
+  };
+
+  const handleGenerateReflection = async () => {
+    if (!keywordsInput.trim()) {
+      alert("소감문을 구성할 핵심 키워드를 입력해 주세요.");
+      return;
+    }
+
+    setIsGeneratingReflection(true);
+    setGeneratedTitle("");
+    setGeneratedContent("");
+
+    try {
+      const response = await fetch("/api/generate-reflection", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ keywords: keywordsInput }),
+      });
+
+      if (!response.ok) {
+        throw new Error("소감문 작성 도중 서버 에러가 발생했습니다.");
+      }
+
+      const data = await response.json();
+      setGeneratedTitle(data.title || "지리·역사 교육 소감문");
+      setGeneratedContent(data.content || "");
+    } catch (err: any) {
+      console.error(err);
+      alert("AI 소감문 작성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setIsGeneratingReflection(false);
     }
   };
 
@@ -935,6 +975,126 @@ export default function App() {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* AI REFLECTION REPORT GENERATOR (소감문 자동 작성 도우미) */}
+              <div id="ai-reflection-generator-card" className="bg-white rounded-3xl border border-[#E2E8F0] p-6 md:p-8 space-y-6 print:hidden shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700">
+                      <Sparkles className="w-3.5 h-3.5" /> AI 학습 도우미
+                    </span>
+                    <h4 className="text-lg font-extrabold text-[#0F172A] tracking-tight mt-1.5">
+                      독도 주권 교육 종합 소감문 자동 작성기
+                    </h4>
+                    <p className="text-slate-500 text-xs mt-1">
+                      배우고 느낀 키워드를 입력해 보세요. 인공지능이 논리적이고 객관적인 학습 소감문(성찰 보고서)을 정교하게 초안해 드립니다.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 space-y-4">
+                  <div className="space-y-2">
+                    <label htmlFor="reflection-keywords-input" className="block text-xs font-bold text-slate-500">
+                      키워드 입력 (쉼표나 띄어쓰기로 여러 키워드를 입력할 수 있습니다)
+                    </label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        id="reflection-keywords-input"
+                        type="text"
+                        placeholder="예: 태정관 지령, 지리적 인식, 평화적 협력, 미래지향적 교류"
+                        value={keywordsInput}
+                        onChange={(e) => setKeywordsInput(e.target.value)}
+                        className="text-xs px-3.5 py-3 flex-1 bg-white border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-xl font-medium"
+                      />
+                      <button
+                        id="generate-reflection-btn"
+                        type="button"
+                        onClick={handleGenerateReflection}
+                        disabled={isGeneratingReflection}
+                        className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm inline-flex items-center justify-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50"
+                      >
+                        {isGeneratingReflection ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            작성 중...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3.5 h-3.5" />
+                            소감문 작성하기
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Pre-defined keyword chip helpers */}
+                    <div className="flex flex-wrap gap-1.5 mt-2 pt-1">
+                      <span className="text-[10px] text-slate-400 font-bold self-center mr-1">추천 키워드 터치:</span>
+                      {["태정관 지령", "세종실록지리지", "지구 곡률 육안 관측", "신한일어업협정", "이성적 평화 협력", "미래 청소년 연대"].map((word) => (
+                        <button
+                          id={`keyword-chip-${word.replace(/\s+/g, '-')}`}
+                          key={word}
+                          type="button"
+                          onClick={() => {
+                            setKeywordsInput((prev) => {
+                              const cleaned = prev.trim();
+                              if (!cleaned) return word;
+                              if (cleaned.includes(word)) return prev;
+                              return `${cleaned}, ${word}`;
+                            });
+                          }}
+                          className="bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 text-[10px] px-2.5 py-1 rounded-full transition font-semibold cursor-pointer"
+                        >
+                          + {word}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Reflection Generated output display */}
+                  {generatedTitle && generatedContent && (
+                    <div id="generated-reflection-output" className="bg-white border border-slate-200 rounded-xl p-5 space-y-3 shadow-xs animate-fade-in text-left">
+                      <div className="flex flex-col sm:flex-row justify-between sm:items-center pb-2.5 border-b border-slate-100 gap-2">
+                        <h5 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                          {generatedTitle}
+                        </h5>
+                        <div className="flex gap-2">
+                          <button
+                            id="btn-copy-reflection"
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(`[${generatedTitle}]\n\n${generatedContent}`);
+                              alert("소감문 복사 완료! 원하는 질문 답안지나 공책에 붙여넣어 활용해 보세요.");
+                            }}
+                            className="text-[10px] font-bold text-slate-500 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg transition cursor-pointer"
+                          >
+                            클립보드 복사
+                          </button>
+                          <button
+                            id="btn-auto-apply-reflection"
+                            type="button"
+                            onClick={() => {
+                              // Auto-fill the 3rd reflection question!
+                              setAnswers((prev) => ({
+                                ...prev,
+                                q3: `${generatedContent}\n\n(참고자료: ${generatedTitle})`
+                              }));
+                              alert("3번째 질문 '차세대 평화적 대안 성찰문' 란에 자동으로 글이 삽입되었습니다!");
+                            }}
+                            className="text-[10px] font-bold text-indigo-600 hover:text-white bg-indigo-50 hover:bg-indigo-600 px-2.5 py-1.5 rounded-lg transition cursor-pointer"
+                          >
+                            3번 답변란에 자동 입력
+                          </button>
+                        </div>
+                      </div>
+                      <div className="text-xs text-slate-600 leading-relaxed font-normal whitespace-pre-line bg-slate-50/50 p-4 rounded-lg border border-slate-100">
+                        {generatedContent}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

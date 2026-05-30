@@ -117,6 +117,64 @@ JSON 출력 형식 예시:
     }
   });
 
+  // Automatically write reflection based on student keywords
+  app.post("/api/generate-reflection", async (req, res) => {
+    const { keywords } = req.body;
+
+    if (!keywords || !keywords.trim()) {
+      return res.status(400).json({ error: "성찰 영역 구성을 위한 키워드는 필수 입력 사항입니다." });
+    }
+
+    const prompt = `
+당신은 대한민국 고등학교에서 독도 영토 주권 교육 및 미래지향적 평화 실습 단원을 수강한 학구적인 학생입니다.
+주어진 핵심 키워드를 반드시 자연스럽게 녹여내어, 풍부하고 이성적인 어조와 지적이고 진지한 태도의 독도 탐구 성찰 소감문(성찰 보고서)을 적합한 문단 구조로 작성해 주세요.
+
+[주어진 성찰 키워드]
+"${keywords}"
+
+[소감문 작성 지침 및 요구 사항]
+1. 감정적 호소(예: 분노, 비방)를 엄격히 자제하고, 역사적 사실(사료 증거, 태정관 지령, 세종실록지리지 등)이나 과학적 도량(육안 관측 등)에 배운 바가 이성적으로 배어 있어야 합니다.
+2. 한일 갈등의 단순한 지속이 아닌, 인류 보편적 평화, 타협론, 상호 이해 등 "미래지향적 동아시아 우정 및 공동체 평화"의 관점을 끝맺음 부분에 확실히 담아 주세요.
+3. 길이는 국문 300자에서 550자 내외로 길지 않고 마침하게 작성해 주세요. (~습니다체 문체 고수)
+4. 반드시 "소감문 제목"과 "소감문 본문"을 포함하는 아래의 JSON 포맷으로 응답해야 하며, 백틱(\`\`\`) 마크다운 표기 등을 일절 사용하지 말고 순수 JSON 문자열만 응답해 주세요.
+
+JSON 출력 형식 예시:
+{
+  "title": "...에 대한 소감문",
+  "content": "..."
+}
+`;
+
+    if (!ai) {
+      // Fallback response when no API key is specified
+      return res.json({
+        title: `핵심 키워드 '${keywords}' 중심의 독도 탐구 소감문`,
+        content: `독도 평화 아카이브 실습을 통해 우리 영토에 담긴 역사의 숨결을 가슴 깊이 체험했습니다. 키워드 '${keywords}'을(를) 바탕으로 그동안 무의식적으로 지녔던 맹목적인 적대감 대신, 명백한 돗토리번 답변서와 에도 막부의 도해 금지령 같은 명확한 역사적 고증 사료를 알게 되어 매우 보람찼습니다. 일방적인 외교 분쟁의 틀에서 벗어나, 상호 신뢰와 실증학적인 이성으로 한일 양국 청소년들이 연대하여 나갈 때, 동해 바다는 비로소 갈등의 바다에서 공존의 바다로 밝게 빛나리라 확신했습니다. 이번 실습은 제게 가슴 뜨거운 자긍심과 함께 세계 시민으로서 차분하고 이성적인 평화 평정 주권 의식을 일깨워주었습니다.`
+      });
+    }
+
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          temperature: 0.7,
+        }
+      });
+
+      const responseText = response.text || "{}";
+      const reflectionData = JSON.parse(responseText.trim());
+      res.json(reflectionData);
+    } catch (error: any) {
+      console.error("Gemini API Reflection Error:", error);
+      res.json({
+        title: `키워드 '${keywords}' 기반 독도 평화 성찰지`,
+        content: `우리가 역사의 거울 속에 비추어 본 '${keywords}'의 진실은, 단순한 소유권 주장을 넘어 더 높은 평화와 사실적 고증 능력을 갖추어야 함을 말해주고 있었습니다. 이번 활동을 통해 고문서 지도를 직접 탐구하고 거리의 인지적 사실을 비교하는 수학적 관찰을 진행하며 지적 희열을 느꼈습니다. 나아가, 미래 청소년들이 주체적으로 사교적 교류와 공론 포럼을 이끌어가며, 서로를 비방하기보다 평화의 수권 동행을 위한 디딤돌을 하나씩 놓아가는 이성적 자아가 되기로 굳게 결심했습니다.`
+      });
+    }
+  });
+
   // Serve static files / Vite HMR
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
